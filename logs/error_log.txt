@@ -1,0 +1,1 @@
+21. 05. 2016 18:31 v DAILY CHECKu se objevila chyba a skript nedoběhl: unorderable types: ValueError() <= float() 
