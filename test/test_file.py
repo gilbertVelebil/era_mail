@@ -1,3 +1,12 @@
+# parameterized side effects
+# def readLatestRecord_side_effect(*args, **kwargs):
+# 	if args[0] == "SELECT * FROM {0} LIMIT 1;":
+# 	    prnt(('2015-07-24 14:59:32','error msg 1'))
+# 	    # return ('2015-07-24 14:59:32','error msg 1')
+# 	if args[0] == 'SELECT strftime("%s","now") - strftime("%s",{0}), * from {1} ORDER BY 2 ASC LIMIT 1;':
+# 		prnt((2000,'2015-07-24 14:59:32','error msg 1'))
+# 	    # return (2000,'2015-07-24 14:59:32','error msg 1')
+
 # @@@
 # class ReadTimeDifferece(unittest.TestCase) - nelze spustit víc než 1 testovací funkci naráz; PROČ?
 
@@ -16,6 +25,7 @@ def prnt(x):
 	print('\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 	print(x)
 	print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
+
 
 ###############
 # py_mail.py
@@ -341,22 +351,24 @@ def prnt(x):
 # 		m_sqlite.connect().cursor().fetchall.return_value = []
 # 		res = self.utils_log.createTable(self.DFLT_DB,self.RUN_LOG,self.RUN_LOG_TBL_DEF)
 # 		self.assertTrue(res)
+# 	# 1 pragma call to find out if table exists, 1 CREATE TABLE call
 # 		self.assertTrue(m_sqlite.connect().cursor().execute.call_count==2)
-
 
 # 	# tbl does not exist yet, create with index
 # 	def test_createTable_PASS_with_index(self,m_sqlite):
 # 		m_sqlite.connect().cursor().fetchall.return_value = []
 # 		m_sqlite.connect().cursor().description = [['dtime',0],['col2',0],['col3',0],['col4',0]]
-# 		res = self.utils_log.createTable(self.DFLT_DB,self.RUN_LOG,self.RUN_LOG_TBL_DEF,0)
+# 		res = self.utils_log.createTable(self.DFLT_DB,self.RUN_LOG,self.RUN_LOG_TBL_DEF,1)
 # 		self.assertTrue(res)
+# 		# 1 pragma call to find out if table exists, 1 CREATE TABLE call, 2 INDEX-related call
 # 		self.assertTrue(m_sqlite.connect().cursor().execute.call_count==4)
 
 # 	# tbl does exist, nothing created
 # 	def test_createTable_PASS_tbl_exists(self,m_sqlite):
 # 		m_sqlite.connect().cursor().fetchall.return_value = ['some value that indicates the table already exists']
-# 		res = self.utils_log.createTable(self.DFLT_DB,self.RUN_LOG,self.RUN_LOG_TBL_DEF,0)
+# 		res = self.utils_log.createTable(self.DFLT_DB,self.RUN_LOG,self.RUN_LOG_TBL_DEF,1)
 # 		self.assertFalse(res)
+# 		# 1 pragma call to find out if table exists
 # 		self.assertTrue(m_sqlite.connect().cursor().execute.call_count==1)
 
 # 	# exception thrown - wrong index column number
@@ -364,57 +376,146 @@ def prnt(x):
 # 		pass
 # 		m_sqlite.connect().cursor().fetchall.return_value = []
 # 		m_sqlite.connect().cursor().description = [['dtime',0],['col2',0],['col3',0],['col4',0]]
-# 		self.assertRaises(Exception,self.utils_log.createTable,self.DFLT_DB,self.RUN_LOG,self.RUN_LOG_TBL_DEF,4)
+# 		self.assertRaises(Exception,self.utils_log.createTable,self.DFLT_DB,self.RUN_LOG,self.RUN_LOG_TBL_DEF,5)
 # 		self.assertTrue(m_sqlite.connect().cursor().execute.call_count==3)
 
-@mock.patch('utils_log.strftime',autospec=True,return_value='08. 06. 2016 20:11')
-@mock.patch('utils_log.sqlite3',autospec=True)
-class LogTime(unittest.TestCase):
-	import utils_log
-	import sqlite3
-	from unittest.mock import patch, call
-	from shared_constants import DFLT_DB, RUN_LOG, RUN_LOG_TBL_DEF, TIME_FORMAT
 
-	# FAIL
-	# 
+# @mock.patch('utils_log.sqlite3',autospec=True)
+# class LogTime(unittest.TestCase):
+# 	import utils_log
+# 	import sqlite3
+# 	from unittest.mock import patch, call
+# 	from shared_constants import DFLT_DB, RUN_LOG, RUN_LOG_TBL_DEF, TIME_FORMAT
 
-	# # logs datetime only
-	# def test_logTime_PASS_datetime(self,m_sqlite,m_strftime):
+# 	# logs datetime only
+# 	def test_logTime_PASS_datetime(self,m_sqlite):
+# 		m_sqlite.connect.return_value.cursor.return_value.description = [['dtime',0],['found_emails_cnt',0],['fetched_emails_cnt',0],['processed_emails_cnt',0],['moved_emails_cnt',0],['error_msg',0]]
+# 		self.res = self.utils_log.logTime(self.DFLT_DB,self.RUN_LOG,self.TIME_FORMAT)
+# 		self.expected_exec_1 = "SELECT * FROM tbl_run_log LIMIT 1;"
+# 		self.expected_exec_2 = "INSERT INTO tbl_run_log(dtime) VALUES ('datetime('now')');"
+# 		self.assertEqual(m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list[0][0][0],self.expected_exec_1)
+# 		self.assertEqual(m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list[1][0][0],self.expected_exec_2)
+
+# 	# logs datetime + additional columns
+# 	def test_logTime_PASS_datetime_logs(self,m_sqlite):
+# 		m_sqlite.connect.return_value.cursor.return_value.description = [['dtime',0],['found_emails_cnt',0],['fetched_emails_cnt',0],['processed_emails_cnt',0],['moved_emails_cnt',0],['error_msg',0]]
+# 		self.res = self.utils_log.logTime(self.DFLT_DB,self.RUN_LOG,self.TIME_FORMAT,10,10,10,10,'null')
+# 		# 1 for pragma call to get tbl structure, 6 for INSERT calls
+# 		self.assertTrue(m_sqlite.connect().cursor().execute.call_count==7)
+# 		# construct expected call arguments		
+# 		self.expected_exec = [mock.call("SELECT * FROM tbl_run_log LIMIT 1;"),
+# 		mock.call("INSERT INTO tbl_run_log(dtime) VALUES ('datetime('now')');"),
+# 		mock.call("INSERT INTO tbl_run_log(found_emails_cnt) VALUES ('10');"),
+# 		mock.call("INSERT INTO tbl_run_log(fetched_emails_cnt) VALUES ('10');"),
+# 		mock.call("INSERT INTO tbl_run_log(processed_emails_cnt) VALUES ('10');"),
+# 		mock.call("INSERT INTO tbl_run_log(moved_emails_cnt) VALUES ('10');"),
+# 		mock.call("INSERT INTO tbl_run_log(error_msg) VALUES ('null');")]
+# 		# actual test
+# 		self.assertEqual(self.expected_exec,m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list)
+
+# 	# logs datetime + additional columns - trims excess to_log information
+# 	def test_logTime_PASS_datetime_logs_trim(self,m_sqlite):
+# 		m_sqlite.connect.return_value.cursor.return_value.description = [['dtime',0],['found_emails_cnt',0],['fetched_emails_cnt',0],['processed_emails_cnt',0],['moved_emails_cnt',0],['error_msg',0]]
+# 		self.res = self.utils_log.logTime(self.DFLT_DB,self.RUN_LOG,self.TIME_FORMAT,10,10,10,10,'null','extra column - to be trimmed')
+# 		# 1 for pragma call to get tbl structure, 6 for INSERT calls
+# 		self.assertTrue(m_sqlite.connect().cursor().execute.call_count==7)
+# 		# construct expected call arguments	
+# 		self.expected_exec = [mock.call("SELECT * FROM tbl_run_log LIMIT 1;"),
+# 		mock.call("INSERT INTO tbl_run_log(dtime) VALUES ('datetime('now')');"),
+# 		mock.call("INSERT INTO tbl_run_log(found_emails_cnt) VALUES ('10');"),
+# 		mock.call("INSERT INTO tbl_run_log(fetched_emails_cnt) VALUES ('10');"),
+# 		mock.call("INSERT INTO tbl_run_log(processed_emails_cnt) VALUES ('10');"),
+# 		mock.call("INSERT INTO tbl_run_log(moved_emails_cnt) VALUES ('10');"),
+# 		mock.call("INSERT INTO tbl_run_log(error_msg) VALUES ('null');")]
+# 		# actual test
+# 		self.assertEqual(self.expected_exec,m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list)
+
+# 	# logs datetime - wrong database
+# 	def test_logTime_FAIL_wrong_dtb(self,m_sqlite):
+# 		m_sqlite.connect.side_effect = Exception
+# 		self.assertRaises(Exception,self.utils_log.createTable,'non_existent dtb',self.RUN_LOG,self.RUN_LOG_TBL_DEF)
+# 		# self.assertTrue(m_sqlite.connect().cursor().execute.call_count==1) # nejde, proč?
+
+	# # logs datetime - wrong tbl name
+	# def test_logTime_FAIL_wrong_tbl(self,m_sqlite):
 	# 	m_sqlite.connect.return_value.cursor.return_value.description = [['dtime',0],['found_emails_cnt',0],['fetched_emails_cnt',0],['processed_emails_cnt',0],['moved_emails_cnt',0],['error_msg',0]]
-	# 	self.res = self.utils_log.logTime(self.DFLT_DB,self.RUN_LOG,self.TIME_FORMAT)
-	# 	self.expected_exec_1 = "SELECT * FROM tbl_run_log LIMIT 1;"
-	# 	self.expected_exec_2 = "INSERT INTO tbl_run_log(dtime) VALUES ('08. 06. 2016 20:11');"
-	# 	self.assertEqual(m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list[0][0][0],self.expected_exec_1)
-	# 	self.assertEqual(m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list[1][0][0],self.expected_exec_2)
-
-	# logs datetime + additional columns
-	def test_logTime_PASS_datetime_logs(self,m_sqlite,m_strftime):
-		m_sqlite.connect.return_value.cursor.return_value.description = [['dtime',0],['found_emails_cnt',0],['fetched_emails_cnt',0],['processed_emails_cnt',0],['moved_emails_cnt',0],['error_msg',0]]
-		self.res = self.utils_log.logTime(self.DFLT_DB,self.RUN_LOG,self.TIME_FORMAT,10,10,10,10,'null')
-		# self.expected_exec_1 = "SELECT * FROM tbl_run_log LIMIT 1;"
-		# self.expected_exec_2 = "INSERT INTO tbl_run_log(dtime) VALUES ('08. 06. 2016 20:11');"
-		# self.expected_exec_3 = "INSERT INTO tbl_run_log(found_emails_cnt) VALUES ('10');"
-		# self.expected_exec_4 = "INSERT INTO tbl_run_log(fetched_emails_cnt) VALUES ('10');"
-		# self.expected_exec_5 = "INSERT INTO tbl_run_log(processed_emails_cnt) VALUES ('10');"
-		# self.expected_exec_6 = "INSERT INTO tbl_run_log(moved_emails_cnt) VALUES ('10');"
-		# self.expected_exec_7 = "INSERT INTO tbl_run_log(error_msg) VALUES ('null');"
-		self.expected_exec = [call("SELECT * FROM tbl_run_log LIMIT 1;"),
-		self.call("INSERT INTO tbl_run_log(dtime) VALUES ('08. 06. 2016 20:11');"),
-		self.call("INSERT INTO tbl_run_log(found_emails_cnt) VALUES ('10');"),
-		self.call("INSERT INTO tbl_run_log(fetched_emails_cnt) VALUES ('10');"),
-		self.call("INSERT INTO tbl_run_log(processed_emails_cnt) VALUES ('10');"),
-		self.call("INSERT INTO tbl_run_log(moved_emails_cnt) VALUES ('10');"),
-		self.call("INSERT INTO tbl_run_log(error_msg) VALUES ('null');")]
-		# self.assertEqual(m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list[0][0][0],self.expected_exec_1)
-		# self.assertEqual(m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list[1][0][0],self.expected_exec_2)
-		# self.assertEqual(m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list,)
-		# self.assertEqual(m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list,self.expected_exec)
+	# 	m_sqlite.connect.return_value.cursor.return_value.execute.side_effect = Exception
+	# 	self.assertRaises(Exception,self.utils_log.createTable,self.DFLT_DB,'non_existent dtb',self.RUN_LOG_TBL_DEF)
+	# 	self.assertTrue(m_sqlite.connect().cursor().execute.call_count==1)
 
 
 
-	# # logs datetime + additional columns - trims excess to_log information
-	# def test_logTime_PASS_datetime_logs_trim(self,m_sqlite):
-	# 	pass
+# @mock.patch('utils_log.sqlite3',autospec=True)
+# class ReadLatestRecord(unittest.TestCase):
+# 	import utils_log
+# 	import sqlite3
+# 	from unittest.mock import patch, call
+# 	from shared_constants import DFLT_DB, RUN_LOG, RUN_LOG_TBL_DEF, TIME_FORMAT
+
+# 	# reads latest record
+# 	def test_readLatestRec_PASS(self,m_sqlite):
+# 		# m_sqlite.connect().cursor().execute().fetch_all.return_value = 'cccc'
+# 		m_sqlite.connect().cursor().description = [['dtime',0],['found_emails_cnt',0],['fetched_emails_cnt',0],['processed_emails_cnt',0],['moved_emails_cnt',0],['error_msg',0]]
+# 		m_sqlite.connect().cursor().fetchall.return_value = (2000,'2015-07-24 14:59:32','error msg 1')
+
+# 		self.res = self.utils_log.readLatestRecord(self.DFLT_DB,self.RUN_LOG)
+		
+# 		self.expected_exec_1 = "SELECT * FROM tbl_run_log LIMIT 1;"
+# 		self.expected_exec_2 = 'SELECT strftime("%s","now") - strftime("%s",dtime), * from tbl_run_log ORDER BY 2 ASC LIMIT 1;'
+# 		self.assertEqual(m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list[0][0][0],self.expected_exec_1)
+# 		self.assertEqual(m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list[1][0][0],self.expected_exec_2)
+
+# 		self.assertTrue(m_sqlite.connect().cursor().execute.call_count==2)
+# 		self.assertEqual(self.res,[2000, '2015-07-24 14:59:32', 'error msg 1'])
+
+# 	# reads latest record but returns nothing
+# 	def test_readLatestRec_PASS(self,m_sqlite):
+# 		# m_sqlite.connect().cursor().execute().fetch_all.return_value = 'cccc'
+# 		m_sqlite.connect().cursor().description = [['dtime',0],['found_emails_cnt',0],['fetched_emails_cnt',0],['processed_emails_cnt',0],['moved_emails_cnt',0],['error_msg',0]]
+# 		m_sqlite.connect().cursor().fetchall.return_value = []
+
+# 		self.res = self.utils_log.readLatestRecord(self.DFLT_DB,self.RUN_LOG)
+		
+# 		self.expected_exec_1 = "SELECT * FROM tbl_run_log LIMIT 1;"
+# 		self.expected_exec_2 = 'SELECT strftime("%s","now") - strftime("%s",dtime), * from tbl_run_log ORDER BY 2 ASC LIMIT 1;'
+# 		self.assertEqual(m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list[0][0][0],self.expected_exec_1)
+# 		self.assertEqual(m_sqlite.connect.return_value.cursor.return_value.execute.call_args_list[1][0][0],self.expected_exec_2)
+
+# 		self.assertTrue(m_sqlite.connect().cursor().execute.call_count==2)
+# 		self.assertEqual(self.res,None)
+
+	# # reads latest record - wrong db name (does not mock!)
+	# def test_readLatestRec_FAIL_wrong_db(self,m_sqlite):
+	# 	# self.assertRaises(Exception,self.utils_log.readLatestRecord,'non_existent dtb',self.RUN_LOG)
+	# 	# self.assertTrue(m_sqlite.connect().cursor().execute.call_count==1) # hmm, proč vlastně 1 a ne 0?
+	# 	prnt(m_sqlite.connect().cursor().execute.call_count)
+
+	# # reads latest record - wrong tbl name (does not mock!)
+	# def test_readLatestRec_FAIL_wrong_tbl(self,m_sqlite):
+	# 	# m_sqlite.connect.return_value.cursor.return_value.execute.side_effect = Exception
+	# 	# self.assertRaises(Exception,self.utils_log.readLatestRecord,self.DFLT_DB,'non_existent tbl')
+	# 	# self.assertTrue(m_sqlite.connect().cursor().execute.call_count==1) # hmm, proč vlastně 1 a ne 0?
+	# 	prnt(m_sqlite.connect().cursor().execute.call_count)
+	
+
+
+
+
+
+# @mock.patch('utils_log.strftime',autospec=True,return_value='08. 06. 2016 20:11')
+# @mock.patch('utils_log.sqlite3',autospec=True)
+# class LogTime(unittest.TestCase):
+# 	import utils_log
+# 	import sqlite3
+# 	from unittest.mock import patch, call
+# 	from shared_constants import DFLT_DB, RUN_LOG, RUN_LOG_TBL_DEF, TIME_FORMAT
+
+
+
+
+
+
+
 
 
 # class LogTime(unittest.TestCase):

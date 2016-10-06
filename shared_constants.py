@@ -1,4 +1,5 @@
-TIME_FORMAT = '%d. %m. %Y %H:%M'
+# TIME_FORMAT = '%d. %m. %Y %H:%M'
+TIME_FORMAT = '%Y-%m-%d %Y %H:%M:%S'
 
 """
 RUN_LOG = 'logs/run_log.txt'

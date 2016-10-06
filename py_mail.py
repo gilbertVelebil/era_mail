@@ -5,7 +5,7 @@
 # 	SMTP_ADDR, SMTP_PORT,
 # 	CREDENTIALS_FILE,
 # 	FROM, FROM_NM,
-# 	TO, TO_NM)
+	# TO, TO_NM)
 ###########
 
 import imaplib
