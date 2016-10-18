@@ -15,18 +15,6 @@ from email.mime.text import MIMEText
 from email.header import Header
 from utils import exceptTraceback
 
-def getCredentials(file_nm):
-	"""
-	read and parse a text file
-	return a list of [login name, password]
-	"""
-	try:
-		with open(file_nm,'r') as f:
-			content_split = f.read().split()
-		return [content_split[0].strip(),content_split[1].strip()]
-	except Exception as e:
-		raise Exception(e)
-
 def loginMail(imap_server,port,credentials):
 	"""
 	create an IMAP4_SSL object and log in using login name and password
